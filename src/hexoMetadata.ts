@@ -36,10 +36,12 @@ export class HexoMetadataUtils {
 
   tags: IClassify[] = []
   categories: IClassify[] = []
+  private _metadataMap: Map<string, THexoMeta> = new Map()
 
   constructor(metadatas: THexoMeta[]) {
     for (const metadata of metadatas) {
       metadata.name = path.parse(metadata.filePath.fsPath).name
+      this._metadataMap.set(metadata.filePath.toString(), metadata)
 
       if (metadata.tags) {
         for (const t of metadata.tags) {
@@ -91,6 +93,10 @@ export class HexoMetadataUtils {
     return utils.categories.map((c) => c.name)
   }
 
+  getMetadataByUri(uri: Uri): THexoMeta | undefined {
+    return this._metadataMap.get(uri.toString())
+  }
+
   private sort() {
     const sortMethod = getConfig(ConfigProperties.sortMethod)
 
@@ -108,20 +114,27 @@ export class HexoMetadataUtils {
   }
 
   private addClassify(type: ClassifyTypes, name: string, metadata: IHexoMetadata) {
+    const hexoMeta = metadata as THexoMeta
+    if (!hexoMeta.name) {
+      hexoMeta.name = path.parse(hexoMeta.filePath.fsPath).name
+    }
+
+    this._metadataMap.set(hexoMeta.filePath.toString(), hexoMeta)
+
     const find = this[type].find((t) => t.name === name)
 
     if (!find) {
       this[type].push({
         name,
-        files: [metadata],
+        files: [hexoMeta],
       })
       return
     }
 
-    const exist = find.files.find((f) => f.filePath === metadata.filePath)
+    const exist = find.files.find((f) => f.filePath === hexoMeta.filePath)
 
     if (!exist) {
-      find.files.push(metadata)
+      find.files.push(hexoMeta)
     }
   }
 }

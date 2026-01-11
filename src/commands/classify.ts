@@ -2,8 +2,7 @@ import { Range, type TextEditor, window, workspace, Uri, commands, WorkspaceEdit
 import yamljs from 'yamljs'
 import { HexoMetadataKeys, HexoMetadataUtils } from '../hexoMetadata'
 import { Command, Commands, command, type ICommandParsed } from './common'
-import { ClassifyItem, ClassifyTypes } from '../treeViews/classifyTreeView/hexoClassifyProvider'
-import { getMDFileMetadata } from '../utils'
+import { ClassifyItem } from '../treeViews/classifyTreeView/hexoClassifyProvider'
 
 export abstract class ClassifyCommand extends Command {
   protected getType(cmd: ICommandParsed, item?: ClassifyItem): HexoMetadataKeys {
@@ -26,9 +25,12 @@ export abstract class ClassifyCommand extends Command {
 
     try {
       const data = yamljs.parse(match[1]) || {}
-      const val = data[key]
+      const val = data[key] || (key === HexoMetadataKeys.categories ? data.category : key === HexoMetadataKeys.tags ? data.tag : undefined)
 
       if (Array.isArray(val)) {
+        if (key === HexoMetadataKeys.categories) {
+          return val.map((v) => (Array.isArray(v) ? v.join(' / ') : String(v)))
+        }
         return val.map((v) => String(v))
       }
       if (typeof val === 'string') {
@@ -264,11 +266,10 @@ export class ClassifyAdd extends ClassifyCommand {
       return
     }
 
-    const files = classify.files.map((f) => f.filePath)
     let updatedCount = 0
 
-    for (const file of files) {
-      const metadata = await getMDFileMetadata(file)
+    for (const metadata of classify.files) {
+      const file = metadata.filePath
       const values = type === HexoMetadataKeys.tags ? [...metadata.tags] : [...metadata.categories]
 
       if (!values.includes(newName)) {
@@ -319,10 +320,8 @@ export class ClassifyRename extends ClassifyCommand {
       return
     }
 
-    const files = classify.files.map((f) => f.filePath)
-
-    for (const file of files) {
-      const metadata = await getMDFileMetadata(file)
+    for (const metadata of classify.files) {
+      const file = metadata.filePath
       const values = type === HexoMetadataKeys.tags ? [...metadata.tags] : [...metadata.categories]
       const index = values.indexOf(oldName)
       if (index !== -1) {
@@ -336,7 +335,7 @@ export class ClassifyRename extends ClassifyCommand {
       }
     }
 
-    window.showInformationMessage(`Renamed ${oldName} to ${newName} in ${files.length} files`)
+    window.showInformationMessage(`Renamed ${oldName} to ${newName} in ${classify.files.length} files`)
     commands.executeCommand(Commands.refresh)
   }
 }
@@ -374,10 +373,8 @@ export class ClassifyDelete extends ClassifyCommand {
       return
     }
 
-    const files = classify.files.map((f) => f.filePath)
-
-    for (const file of files) {
-      const metadata = await getMDFileMetadata(file)
+    for (const metadata of classify.files) {
+      const file = metadata.filePath
       const values = type === HexoMetadataKeys.tags ? [...metadata.tags] : [...metadata.categories]
       const index = values.indexOf(name)
       if (index !== -1) {
@@ -386,7 +383,7 @@ export class ClassifyDelete extends ClassifyCommand {
       }
     }
 
-    window.showInformationMessage(`Deleted ${typeLabel} ${name} from ${files.length} files`)
+    window.showInformationMessage(`Deleted ${typeLabel} ${name} from ${classify.files.length} files`)
     commands.executeCommand(Commands.refresh)
   }
 }

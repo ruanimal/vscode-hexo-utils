@@ -36,22 +36,24 @@ export async function getMDFileMetadata(uri: Uri): Promise<IHexoMetadata> {
 
     const data = yamljs.parse(yamlData[1]) || {}
 
-    const categories: (string | string[])[] = Array.isArray(data[HexoMetadataKeys.categories])
-      ? data[HexoMetadataKeys.categories]
-      : typeof data[HexoMetadataKeys.categories] === 'string'
-        ? [data[HexoMetadataKeys.categories]]
+    const rawCategories = data[HexoMetadataKeys.categories] || data.category || []
+    const categories: (string | string[])[] = Array.isArray(rawCategories)
+      ? rawCategories
+      : typeof rawCategories === 'string'
+        ? [rawCategories]
         : []
 
-    const hasSubCategory = categories.find((n) => Array.isArray(n))
+    const normalizedCategories = categories.map((c) => (Array.isArray(c) ? c.join(' / ') : c))
 
-    const normalizedCategories = hasSubCategory
-      ? categories.map((c) => (Array.isArray(c) ? c.join(' / ') : c))
-      : categories.length
-        ? [categories.join(' / ')]
+    const rawTags = data[HexoMetadataKeys.tags] || data.tag || []
+    const tags: string[] = Array.isArray(rawTags)
+      ? rawTags.map(String)
+      : typeof rawTags === 'string'
+        ? [rawTags]
         : []
 
     const metadata = {
-      tags: Array.isArray(data[HexoMetadataKeys.tags]) ? data[HexoMetadataKeys.tags] : [],
+      tags,
       filePath: uri,
       // →  · /
       categories: normalizedCategories,

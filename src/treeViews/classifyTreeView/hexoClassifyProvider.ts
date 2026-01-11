@@ -83,7 +83,7 @@ export class HexoClassifyProvider extends BaseDispose implements TreeDataProvide
         }
       }
     } else {
-      const classifies = this._hexoMetadataUtils[this.type]
+      const classifies = this._hexoMetadataUtils?.[this.type] || []
 
       for (const t of classifies) {
         const item = new ClassifyItem(
