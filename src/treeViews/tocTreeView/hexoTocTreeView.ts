@@ -10,6 +10,7 @@ export class HexoTocTreeView extends BaseTreeView<TocItem> {
     super(viewId, provider, {
       ...opts,
       dragAndDropController: provider,
+      canSelectMany: false,
     })
 
     this.provider = provider

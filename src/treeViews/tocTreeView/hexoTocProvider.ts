@@ -14,6 +14,7 @@ import {
   Position,
   commands,
   type DocumentSymbol,
+  type TextDocument,
 } from 'vscode'
 import debounce from 'debounce'
 import { BaseDispose } from '../common'
@@ -181,11 +182,13 @@ export class HexoTocProvider
 
     const document = editor.document
 
-    // Get text of the section to move
-    const startPos = new Position(source.lineStart, 0)
-    const endPos = new Position(source.lineEnd, document.lineAt(source.lineEnd).text.length)
-    const sourceRange = new Range(startPos, endPos)
-    const sourceText = document.getText(sourceRange)
+    // Calculate level delta
+    // By using target.level instead of target.level + 1, we make the source a sibling
+    // of the target, which effectively allows "dropping between" items.
+    const targetLevel = target ? target.level : 1
+    const levelDelta = targetLevel - source.level
+
+    const adjustedText = this.adjustHeadingLevels(source, document, levelDelta)
 
     await editor.edit((editBuilder) => {
       // 1. Delete source (including trailing newline if possible)
@@ -194,12 +197,45 @@ export class HexoTocProvider
 
       // 2. Insert at target
       if (target) {
-        editBuilder.insert(new Position(target.lineStart, 0), sourceText + '\n')
+        // Insert at the end of the target's section
+        editBuilder.insert(new Position(target.lineEnd + 1, 0), adjustedText + '\n')
       } else {
         // Drop at background -> end of document
-        editBuilder.insert(new Position(document.lineCount, 0), '\n' + sourceText)
+        editBuilder.insert(new Position(document.lineCount, 0), '\n' + adjustedText)
       }
     })
+  }
+
+  private adjustHeadingLevels(source: TocItem, document: TextDocument, levelDelta: number): string {
+    const headingLines = new Set<number>()
+    const collectLines = (item: TocItem) => {
+      headingLines.add(item.lineStart)
+      item.children.forEach(collectLines)
+    }
+    collectLines(source)
+
+    let result = ''
+    for (let i = source.lineStart; i <= source.lineEnd; i++) {
+      const line = document.lineAt(i)
+      let text = line.text
+
+      if (headingLines.has(i)) {
+        text = text.replace(/^(#+)/, (match: string) => {
+          let newLevel = match.length + levelDelta
+          newLevel = Math.max(1, Math.min(6, newLevel))
+          return '#'.repeat(newLevel)
+        })
+      }
+
+      result += text
+
+      // Preserve original line ending if not the last line of the selection
+      if (i < source.lineEnd) {
+        const newlineRange = new Range(i, line.text.length, i + 1, 0)
+        result += document.getText(newlineRange)
+      }
+    }
+    return result
   }
 
   private isDescendant(parent: TocItem, child: TocItem): boolean {
