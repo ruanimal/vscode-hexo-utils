@@ -107,12 +107,14 @@ export class ClassifyItem extends TreeItem {
 
   constructor(
     label: string,
-    type: ClassifyTypes,
+    readonly type: ClassifyTypes,
     uri?: Uri,
     collapsibleState?: TreeItemCollapsibleState,
   ) {
     super(label, collapsibleState)
     const resourcesFolder = configs.project.resource
+
+    this.contextValue = uri ? 'hexoArticleItem' : 'hexoClassifyItem'
 
     this.iconPath = uri
       ? ThemeIcon.File
