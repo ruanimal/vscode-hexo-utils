@@ -96,39 +96,10 @@ export abstract class ClassifyCommand extends Command {
 
   protected replaceValueInText(text: string, key: string, newValue: string): string {
     const lines = text.split(/\r?\n/)
-    let fmStart = -1
-    let fmEnd = -1
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].trim() === '---') {
-        if (fmStart === -1) {
-          fmStart = i
-        } else {
-          fmEnd = i
-          break
-        }
-      }
-    }
+    const { fmStart, fmEnd, keyStartLine, keyEndLine } = this.getFrontMatterKeyRange(lines, key)
 
     if (fmStart === -1 || fmEnd === -1) {
       return text
-    }
-
-    let keyStartLine = -1
-    let keyEndLine = -1
-    for (let i = fmStart + 1; i < fmEnd; i++) {
-      if (lines[i].startsWith(`${key}:`)) {
-        keyStartLine = i
-        // Find where this key's value ends (next key or end of front matter)
-        let j = i + 1
-        while (
-          j < fmEnd &&
-          (lines[j].startsWith(' ') || lines[j].startsWith('-') || lines[j].trim() === '')
-        ) {
-          j++
-        }
-        keyEndLine = j - 1
-        break
-      }
     }
 
     if (keyStartLine !== -1) {
@@ -146,8 +117,30 @@ export abstract class ClassifyCommand extends Command {
     const document = editor.document
     const text = document.getText()
 
-    // Find Front Matter boundaries
     const lines = text.split(/\r?\n/)
+    const { fmStart, fmEnd, keyStartLine, keyEndLine } = this.getFrontMatterKeyRange(lines, key)
+
+    if (fmStart === -1 || fmEnd === -1) {
+      return
+    }
+
+    if (keyStartLine !== -1) {
+      const range = new Range(keyStartLine, 0, keyEndLine, lines[keyEndLine].length)
+      editor.edit((editBuilder) => {
+        editBuilder.replace(range, newValue)
+      })
+    } else {
+      // Key not found, insert after the first ---
+      editor.edit((editBuilder) => {
+        editBuilder.insert(document.lineAt(fmStart + 1).range.start, `${newValue}\n`)
+      })
+    }
+  }
+
+  private getFrontMatterKeyRange(
+    lines: string[],
+    key: string,
+  ): { fmStart: number; fmEnd: number; keyStartLine: number; keyEndLine: number } {
     let fmStart = -1
     let fmEnd = -1
     for (let i = 0; i < lines.length; i++) {
@@ -162,10 +155,9 @@ export abstract class ClassifyCommand extends Command {
     }
 
     if (fmStart === -1 || fmEnd === -1) {
-      return
+      return { fmStart, fmEnd, keyStartLine: -1, keyEndLine: -1 }
     }
 
-    // Find the key within Front Matter
     let keyStartLine = -1
     let keyEndLine = -1
     for (let i = fmStart + 1; i < fmEnd; i++) {
@@ -184,17 +176,7 @@ export abstract class ClassifyCommand extends Command {
       }
     }
 
-    if (keyStartLine !== -1) {
-      const range = new Range(keyStartLine, 0, keyEndLine, lines[keyEndLine].length)
-      editor.edit((editBuilder) => {
-        editBuilder.replace(range, newValue)
-      })
-    } else {
-      // Key not found, insert after the first ---
-      editor.edit((editBuilder) => {
-        editBuilder.insert(document.lineAt(fmStart + 1).range.start, `${newValue}\n`)
-      })
-    }
+    return { fmStart, fmEnd, keyStartLine, keyEndLine }
   }
 }
 
