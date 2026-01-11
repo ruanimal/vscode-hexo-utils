@@ -135,7 +135,9 @@ export class HexoTocProvider
         item.children.push(
           ...childHeadings.map((child, idx) => convert(child, idx, currentIndices, item))
         )
-        item.collapsibleState = TreeItemCollapsibleState.Expanded
+        if (item.children.length > 0) {
+          item.collapsibleState = TreeItemCollapsibleState.Expanded
+        }
       }
 
       return item
