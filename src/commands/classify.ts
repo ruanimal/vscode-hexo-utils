@@ -2,8 +2,7 @@ import { Range, type TextEditor, window, workspace, Uri, commands, WorkspaceEdit
 import yamljs from 'yamljs'
 import { HexoMetadataKeys, HexoMetadataUtils } from '../hexoMetadata'
 import { Command, Commands, command, type ICommandParsed } from './common'
-import { ClassifyItem, ClassifyTypes } from '../treeViews/classifyTreeView/hexoClassifyProvider'
-import { getMDFileMetadata } from '../utils'
+import { ClassifyItem } from '../treeViews/classifyTreeView/hexoClassifyProvider'
 
 export abstract class ClassifyCommand extends Command {
   protected getType(cmd: ICommandParsed, item?: ClassifyItem): HexoMetadataKeys {
@@ -26,9 +25,12 @@ export abstract class ClassifyCommand extends Command {
 
     try {
       const data = yamljs.parse(match[1]) || {}
-      const val = data[key]
+      const val = data[key] || (key === HexoMetadataKeys.categories ? data.category : key === HexoMetadataKeys.tags ? data.tag : undefined)
 
       if (Array.isArray(val)) {
+        if (key === HexoMetadataKeys.categories) {
+          return val.map((v) => (Array.isArray(v) ? v.join(' / ') : String(v)))
+        }
         return val.map((v) => String(v))
       }
       if (typeof val === 'string') {
@@ -94,39 +96,10 @@ export abstract class ClassifyCommand extends Command {
 
   protected replaceValueInText(text: string, key: string, newValue: string): string {
     const lines = text.split(/\r?\n/)
-    let fmStart = -1
-    let fmEnd = -1
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].trim() === '---') {
-        if (fmStart === -1) {
-          fmStart = i
-        } else {
-          fmEnd = i
-          break
-        }
-      }
-    }
+    const { fmStart, fmEnd, keyStartLine, keyEndLine } = this.getFrontMatterKeyRange(lines, key)
 
     if (fmStart === -1 || fmEnd === -1) {
       return text
-    }
-
-    let keyStartLine = -1
-    let keyEndLine = -1
-    for (let i = fmStart + 1; i < fmEnd; i++) {
-      if (lines[i].startsWith(`${key}:`)) {
-        keyStartLine = i
-        // Find where this key's value ends (next key or end of front matter)
-        let j = i + 1
-        while (
-          j < fmEnd &&
-          (lines[j].startsWith(' ') || lines[j].startsWith('-') || lines[j].trim() === '')
-        ) {
-          j++
-        }
-        keyEndLine = j - 1
-        break
-      }
     }
 
     if (keyStartLine !== -1) {
@@ -144,8 +117,30 @@ export abstract class ClassifyCommand extends Command {
     const document = editor.document
     const text = document.getText()
 
-    // Find Front Matter boundaries
     const lines = text.split(/\r?\n/)
+    const { fmStart, fmEnd, keyStartLine, keyEndLine } = this.getFrontMatterKeyRange(lines, key)
+
+    if (fmStart === -1 || fmEnd === -1) {
+      return
+    }
+
+    if (keyStartLine !== -1) {
+      const range = new Range(keyStartLine, 0, keyEndLine, lines[keyEndLine].length)
+      editor.edit((editBuilder) => {
+        editBuilder.replace(range, newValue)
+      })
+    } else {
+      // Key not found, insert after the first ---
+      editor.edit((editBuilder) => {
+        editBuilder.insert(document.lineAt(fmStart + 1).range.start, `${newValue}\n`)
+      })
+    }
+  }
+
+  private getFrontMatterKeyRange(
+    lines: string[],
+    key: string,
+  ): { fmStart: number; fmEnd: number; keyStartLine: number; keyEndLine: number } {
     let fmStart = -1
     let fmEnd = -1
     for (let i = 0; i < lines.length; i++) {
@@ -160,10 +155,9 @@ export abstract class ClassifyCommand extends Command {
     }
 
     if (fmStart === -1 || fmEnd === -1) {
-      return
+      return { fmStart, fmEnd, keyStartLine: -1, keyEndLine: -1 }
     }
 
-    // Find the key within Front Matter
     let keyStartLine = -1
     let keyEndLine = -1
     for (let i = fmStart + 1; i < fmEnd; i++) {
@@ -182,17 +176,19 @@ export abstract class ClassifyCommand extends Command {
       }
     }
 
-    if (keyStartLine !== -1) {
-      const range = new Range(keyStartLine, 0, keyEndLine, lines[keyEndLine].length)
-      editor.edit((editBuilder) => {
-        editBuilder.replace(range, newValue)
-      })
+    return { fmStart, fmEnd, keyStartLine, keyEndLine }
+  }
+
+  protected normalizeCategory(val: string): string {
+    let parts: string[] = []
+    const trimmedVal = val.trim()
+    if (trimmedVal.startsWith('[') && trimmedVal.endsWith(']')) {
+      const content = trimmedVal.slice(1, -1)
+      parts = content.split(',').map((s) => s.trim().replace(/^["']|["']$/g, ''))
     } else {
-      // Key not found, insert after the first ---
-      editor.edit((editBuilder) => {
-        editBuilder.insert(document.lineAt(fmStart + 1).range.start, `${newValue}\n`)
-      })
+      parts = val.split('/').map((s) => s.trim())
     }
+    return parts.filter(Boolean).join(' / ')
   }
 }
 
@@ -248,12 +244,16 @@ export class ClassifyAdd extends ClassifyCommand {
     const oldName = typeof item.label === 'string' ? item.label : item.label.label
     const typeLabel = type === HexoMetadataKeys.tags ? 'tag' : 'category'
 
-    const newName = await window.showInputBox({
+    let newName = await window.showInputBox({
       prompt: `Add new ${typeLabel} to articles under "${oldName}"`,
     })
 
     if (!newName) {
       return
+    }
+
+    if (type === HexoMetadataKeys.categories) {
+      newName = this.normalizeCategory(newName)
     }
 
     const utils = await HexoMetadataUtils.get()
@@ -264,11 +264,10 @@ export class ClassifyAdd extends ClassifyCommand {
       return
     }
 
-    const files = classify.files.map((f) => f.filePath)
     let updatedCount = 0
 
-    for (const file of files) {
-      const metadata = await getMDFileMetadata(file)
+    for (const metadata of classify.files) {
+      const file = metadata.filePath
       const values = type === HexoMetadataKeys.tags ? [...metadata.tags] : [...metadata.categories]
 
       if (!values.includes(newName)) {
@@ -302,13 +301,20 @@ export class ClassifyRename extends ClassifyCommand {
     const oldName = typeof item.label === 'string' ? item.label : item.label.label
     const typeLabel = type === HexoMetadataKeys.tags ? 'Tag' : 'Category'
 
-    const newName = await window.showInputBox({
+    let newName = await window.showInputBox({
       value: oldName,
       prompt: `Rename ${typeLabel}`,
     })
 
     if (!newName || newName === oldName) {
       return
+    }
+
+    if (type === HexoMetadataKeys.categories) {
+      newName = this.normalizeCategory(newName)
+      if (newName === oldName) {
+        return
+      }
     }
 
     const utils = await HexoMetadataUtils.get()
@@ -319,10 +325,8 @@ export class ClassifyRename extends ClassifyCommand {
       return
     }
 
-    const files = classify.files.map((f) => f.filePath)
-
-    for (const file of files) {
-      const metadata = await getMDFileMetadata(file)
+    for (const metadata of classify.files) {
+      const file = metadata.filePath
       const values = type === HexoMetadataKeys.tags ? [...metadata.tags] : [...metadata.categories]
       const index = values.indexOf(oldName)
       if (index !== -1) {
@@ -336,7 +340,7 @@ export class ClassifyRename extends ClassifyCommand {
       }
     }
 
-    window.showInformationMessage(`Renamed ${oldName} to ${newName} in ${files.length} files`)
+    window.showInformationMessage(`Renamed ${oldName} to ${newName} in ${classify.files.length} files`)
     commands.executeCommand(Commands.refresh)
   }
 }
@@ -374,10 +378,8 @@ export class ClassifyDelete extends ClassifyCommand {
       return
     }
 
-    const files = classify.files.map((f) => f.filePath)
-
-    for (const file of files) {
-      const metadata = await getMDFileMetadata(file)
+    for (const metadata of classify.files) {
+      const file = metadata.filePath
       const values = type === HexoMetadataKeys.tags ? [...metadata.tags] : [...metadata.categories]
       const index = values.indexOf(name)
       if (index !== -1) {
@@ -386,7 +388,7 @@ export class ClassifyDelete extends ClassifyCommand {
       }
     }
 
-    window.showInformationMessage(`Deleted ${typeLabel} ${name} from ${files.length} files`)
+    window.showInformationMessage(`Deleted ${typeLabel} ${name} from ${classify.files.length} files`)
     commands.executeCommand(Commands.refresh)
   }
 }

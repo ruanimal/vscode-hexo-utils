@@ -34,14 +34,14 @@ export class HexoCompletionProvider implements CompletionItemProvider {
       let key: string | undefined
 
       // tags: xxx, yyy
-      const tagMatch = lineTextBefore.match(new RegExp(`^\\s*${HexoMetadataKeys.tags}:\\s*(.*)$`))
+      const tagMatch = lineTextBefore.match(new RegExp(`^\\s*(${HexoMetadataKeys.tags}|tag):\\s*(.*)$`))
       if (tagMatch) {
         key = HexoMetadataKeys.tags
       }
 
       // categories: xxx
       const categoryMatch = lineTextBefore.match(
-        new RegExp(`^\\s*${HexoMetadataKeys.categories}:\\s*(.*)$`),
+        new RegExp(`^\\s*(${HexoMetadataKeys.categories}|category):\\s*(.*)$`),
       )
       if (categoryMatch) {
         key = HexoMetadataKeys.categories
@@ -53,11 +53,11 @@ export class HexoCompletionProvider implements CompletionItemProvider {
         key = this.getParentKey(document, position.line)
       }
 
-      if (key === HexoMetadataKeys.tags) {
+      if (key === HexoMetadataKeys.tags || key === 'tag') {
         return this.completeByMetaKey(HexoMetadataKeys.tags, await HexoMetadataUtils.getTags())
       }
 
-      if (key === HexoMetadataKeys.categories) {
+      if (key === HexoMetadataKeys.categories || key === 'category') {
         return this.completeByMetaKey(
           HexoMetadataKeys.categories,
           await HexoMetadataUtils.getCategories(),
