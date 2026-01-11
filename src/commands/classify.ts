@@ -178,6 +178,18 @@ export abstract class ClassifyCommand extends Command {
 
     return { fmStart, fmEnd, keyStartLine, keyEndLine }
   }
+
+  protected normalizeCategory(val: string): string {
+    let parts: string[] = []
+    const trimmedVal = val.trim()
+    if (trimmedVal.startsWith('[') && trimmedVal.endsWith(']')) {
+      const content = trimmedVal.slice(1, -1)
+      parts = content.split(',').map((s) => s.trim().replace(/^["']|["']$/g, ''))
+    } else {
+      parts = val.split('/').map((s) => s.trim())
+    }
+    return parts.filter(Boolean).join(' / ')
+  }
 }
 
 @command()
@@ -232,12 +244,16 @@ export class ClassifyAdd extends ClassifyCommand {
     const oldName = typeof item.label === 'string' ? item.label : item.label.label
     const typeLabel = type === HexoMetadataKeys.tags ? 'tag' : 'category'
 
-    const newName = await window.showInputBox({
+    let newName = await window.showInputBox({
       prompt: `Add new ${typeLabel} to articles under "${oldName}"`,
     })
 
     if (!newName) {
       return
+    }
+
+    if (type === HexoMetadataKeys.categories) {
+      newName = this.normalizeCategory(newName)
     }
 
     const utils = await HexoMetadataUtils.get()
@@ -285,13 +301,20 @@ export class ClassifyRename extends ClassifyCommand {
     const oldName = typeof item.label === 'string' ? item.label : item.label.label
     const typeLabel = type === HexoMetadataKeys.tags ? 'Tag' : 'Category'
 
-    const newName = await window.showInputBox({
+    let newName = await window.showInputBox({
       value: oldName,
       prompt: `Rename ${typeLabel}`,
     })
 
     if (!newName || newName === oldName) {
       return
+    }
+
+    if (type === HexoMetadataKeys.categories) {
+      newName = this.normalizeCategory(newName)
+      if (newName === oldName) {
+        return
+      }
     }
 
     const utils = await HexoMetadataUtils.get()
