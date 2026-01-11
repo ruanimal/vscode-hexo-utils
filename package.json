@@ -400,6 +400,38 @@
         {
           "command": "hexo.delete",
           "when": "false"
+        },
+        {
+          "command": "hexo.classify.add[tags]",
+          "when": "false"
+        },
+        {
+          "command": "hexo.classify.add[categories]",
+          "when": "false"
+        },
+        {
+          "command": "hexo.classify.rename[tags]",
+          "when": "false"
+        },
+        {
+          "command": "hexo.classify.rename[categories]",
+          "when": "false"
+        },
+        {
+          "command": "hexo.classify.delete[tags]",
+          "when": "false"
+        },
+        {
+          "command": "hexo.classify.delete[categories]",
+          "when": "false"
+        },
+        {
+          "command": "hexo.toc.rename",
+          "when": "false"
+        },
+        {
+          "command": "hexo.toc.delete",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -475,12 +507,12 @@
         {
           "command": "hexo.classify.rename[tags]",
           "when": "view == hexo.tags && viewItem == hexoClassifyItem",
-          "group": "hexo@1"
+          "group": "hexo@2"
         },
         {
           "command": "hexo.classify.rename[categories]",
           "when": "view == hexo.categories && viewItem == hexoClassifyItem",
-          "group": "hexo@1"
+          "group": "hexo@2"
         },
         {
           "command": "hexo.classify.add[tags]",
@@ -495,12 +527,12 @@
         {
           "command": "hexo.classify.delete[tags]",
           "when": "view == hexo.tags && viewItem == hexoClassifyItem",
-          "group": "hexo@2"
+          "group": "hexo@3"
         },
         {
           "command": "hexo.classify.delete[categories]",
           "when": "view == hexo.categories && viewItem == hexoClassifyItem",
-          "group": "hexo@2"
+          "group": "hexo@3"
         }
       ]
     },
