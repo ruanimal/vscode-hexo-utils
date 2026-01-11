@@ -163,6 +163,11 @@
           ],
           "default": "post",
           "description": "Paste image folder type. (if `post`, paste image to current post folder, else the image would be at global folder `/sources/images/<__post>/`)"
+        },
+        "hexo.toc.enableNumbering": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable auto-numbering for TOC."
         }
       }
     },
@@ -273,6 +278,16 @@
         "command": "hexo.open",
         "title": "Open a article",
         "category": "Hexo Utils"
+      },
+      {
+        "command": "hexo.toc.rename",
+        "title": "Rename",
+        "category": "Hexo Utils"
+      },
+      {
+        "command": "hexo.toc.delete",
+        "title": "Delete",
+        "category": "Hexo Utils"
       }
     ],
     "keybindings": [
@@ -311,6 +326,10 @@
         {
           "id": "hexo.tags",
           "name": "tags"
+        },
+        {
+          "id": "hexo.toc",
+          "name": "toc"
         }
       ]
     },
@@ -395,6 +414,16 @@
         {
           "command": "hexo.rename",
           "when": "view =~ /hexo.(draft|post)/",
+          "group": "hexo@2"
+        },
+        {
+          "command": "hexo.toc.rename",
+          "when": "view == hexo.toc",
+          "group": "hexo@1"
+        },
+        {
+          "command": "hexo.toc.delete",
+          "when": "view == hexo.toc",
           "group": "hexo@2"
         }
       ]
