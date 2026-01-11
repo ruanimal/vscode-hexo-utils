@@ -21,12 +21,14 @@ export class HexoTocTreeView extends BaseTreeView<TocItem> {
     this.subscribe(
       commands.registerCommand('hexo.toc.reveal', (item: TocItem | { lineStart: number }) => {
         const editor = window.activeTextEditor
-        if (editor) {
-          const lineStart = 'lineStart' in item ? item.lineStart : item.lineStart
-          const range = editor.document.lineAt(lineStart).range
-          editor.selection = new Selection(range.start, range.start)
-          editor.revealRange(range)
+        if (!editor || !('lineStart' in item)) {
+          return
         }
+
+        const lineStart = item.lineStart
+        const range = editor.document.lineAt(lineStart).range
+        editor.selection = new Selection(range.start, range.start)
+        editor.revealRange(range)
       }),
       commands.registerCommand('hexo.toc.rename', async (item: TocItem) => {
           // If called from context menu, it might pass current selection if multiple.
@@ -34,7 +36,7 @@ export class HexoTocTreeView extends BaseTreeView<TocItem> {
           await this.provider.refresh() // Ensure we have latest line numbers
 
           const newTitle = await window.showInputBox({
-              value: item.label,
+              value: typeof item.label === 'string' ? item.label : item.label?.label,
               prompt: 'Enter new title'
           })
 

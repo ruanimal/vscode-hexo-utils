@@ -113,7 +113,8 @@ export class HexoTocProvider
 
       if (enableNumbering) {
         const numbering = currentIndices.join('.')
-        displayTitle = `${numbering}. ${rawTitle}`
+        const suffix = currentIndices.length === 1 ? '.' : ''
+        displayTitle = `${numbering}${suffix} ${rawTitle}`
       }
 
       const item = new TocItem(
@@ -133,9 +134,7 @@ export class HexoTocProvider
         item.children.push(
           ...childHeadings.map((child, idx) => convert(child, idx, currentIndices, item))
         )
-        if (item.children.length > 0) {
-          item.collapsibleState = TreeItemCollapsibleState.Expanded
-        }
+        item.collapsibleState = TreeItemCollapsibleState.Expanded
       }
 
       return item
