@@ -14,6 +14,7 @@ A sidebar for [Hexo] blog system.
 - Upload all local images in current file, it will replace the local path with the uploaded URL and keep the original path as a comment.
 - Support remote development
 - Automatically open Markdown side preview when opening a blog post (Thanks [ruanimal])
+- Markdown Table of Contents (TOC) sidebar, support travel/rename/delete headings, and auto-numbering.
 - And more ...
 
 ![feature](docs-images/feature.png)
@@ -32,6 +33,7 @@ A sidebar for [Hexo] blog system.
 - `hexo.uploadCustom`: Custom upload server configuration. Only available when `hexo.upload` is `true`.(Thanks [ruanimal])
 - `hexo.generateTimeFormat`: The time format when generate new article, default is ISO format. ([time-format-tokens])
 - `hexo.assetFolderType`: Paste image folder type. (if `post`, paste image to current post folder, else the image would be at global folder `/sources/images/<__post>/`), see [#89](https://github.com/0x-jerry/vscode-hexo-utils/pull/89)
+- `hexo.toc.enableNumbering`: Enable auto-numbering for TOC, default `false`.
 
 ### Custom Upload Server Example
 
