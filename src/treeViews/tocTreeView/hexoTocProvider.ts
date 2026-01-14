@@ -15,6 +15,7 @@ import {
   commands,
   type DocumentSymbol,
   type TextDocument,
+  EndOfLine,
 } from 'vscode'
 import debounce from 'debounce'
 import { BaseDispose } from '../common'
@@ -192,21 +193,24 @@ export class HexoTocProvider
     const targetLevel = target ? target.level : 1
     const levelDelta = targetLevel - source.level
 
-    const adjustedText = this.adjustHeadingLevels(source, document, levelDelta)
-
+    let adjustedText = this.adjustHeadingLevels(source, document, levelDelta)
     await editor.edit((editBuilder) => {
       // 1. Delete source (including trailing newline if possible)
       const deleteRange = new Range(source.lineStart, 0, source.lineEnd + 1, 0)
       editBuilder.delete(deleteRange)
 
       // 2. Insert at target
-      if (target) {
-        // Insert at the end of the target's section
-        editBuilder.insert(new Position(target.lineEnd + 1, 0), adjustedText + '\n')
-      } else {
-        // Drop at background -> end of document
-        editBuilder.insert(new Position(document.lineCount, 0), '\n' + adjustedText)
+      // Add trailing newline if necessary
+      const eol = (document.eol === EndOfLine.LF) ? '\n' : '\r\n'
+      if (!adjustedText.endsWith(eol)) {
+        adjustedText += eol
       }
+      const pos = target ? new Position(target.lineEnd + 1, 0) : new Position(document.lineCount, 0)
+      const lastLineText = document.getText(document.lineAt(pos.line-1).rangeIncludingLineBreak)
+      if (!lastLineText.endsWith(eol)) {
+        adjustedText = eol + adjustedText
+      }
+      editBuilder.insert(pos, adjustedText)
     })
   }
 
@@ -221,7 +225,7 @@ export class HexoTocProvider
     let result = ''
     for (let i = source.lineStart; i <= source.lineEnd; i++) {
       const line = document.lineAt(i)
-      let text = line.text
+      let text = document.getText(line.rangeIncludingLineBreak);
 
       if (headingLines.has(i)) {
         text = text.replace(/^(#+)/, (match: string) => {
@@ -232,12 +236,6 @@ export class HexoTocProvider
       }
 
       result += text
-
-      // Preserve original line ending if not the last line of the selection
-      if (i < source.lineEnd) {
-        const newlineRange = new Range(i, line.text.length, i + 1, 0)
-        result += document.getText(newlineRange)
-      }
     }
     return result
   }
