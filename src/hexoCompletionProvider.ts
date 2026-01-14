@@ -13,7 +13,7 @@ import {
 } from 'vscode'
 import { configs } from './configs'
 import { HexoMetadataKeys, HexoMetadataUtils } from './hexoMetadata'
-import { parseFrontMatter } from './utils'
+import { isInFrontMatter, parseFrontMatter } from './utils'
 
 const frontMatterKeys = [
   'layout',
@@ -45,7 +45,7 @@ export class HexoFrontMatterCompletionProvider implements CompletionItemProvider
     const lineTextBefore = document.lineAt(position.line).text.substring(0, position.character)
 
     // Check if in Front Matter
-    const isFrontMatter = this.isInFrontMatter(document, position)
+    const isFrontMatter = isInFrontMatter(document, position)
     if (!isFrontMatter) {
       return []
     }
@@ -114,21 +114,6 @@ export class HexoFrontMatterCompletionProvider implements CompletionItemProvider
       }
       return item
     })
-  }
-
-  private isInFrontMatter(document: TextDocument, position: Position): boolean {
-    const text = document.getText()
-    const lines = text.split(/\r?\n/)
-    let dashCount = 0
-    for (let i = 0; i <= position.line; i++) {
-      if (lines[i].trim() === '---') {
-        dashCount++
-      }
-    }
-    // If we are between the first and second '---', we are in Front Matter
-    // But if the current line is the second '---', we might still be considered "in" it depending on logic.
-    // Usually, Front Matter starts at line 0 with '---'.
-    return dashCount === 1 && lines[position.line].trim() !== '---'
   }
 
   private getDocumentKeys(document: TextDocument): string[] {

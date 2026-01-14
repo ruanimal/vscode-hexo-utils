@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { type Uri, window, workspace } from 'vscode'
+import { type Position, type TextDocument, type Uri, window, workspace } from 'vscode'
 import yamljs from 'yamljs'
 import { HexoMetadataKeys, type IHexoMetadata } from '../hexoMetadata'
 
@@ -16,6 +16,36 @@ export async function askForNext(placeHolder: string): Promise<boolean> {
 }
 
 const metaCache: Record<string, IHexoMetadata> = {}
+
+export function getFrontMatterRange(document: TextDocument): { start: number; end: number } | undefined {
+  const text = document.getText()
+  const lines = text.split(/\r?\n/)
+  let start = -1
+  let end = -1
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === '---') {
+      if (start === -1) {
+        start = i
+      } else {
+        end = i
+        break
+      }
+    }
+  }
+
+  if (start !== -1 && end !== -1) {
+    return { start, end }
+  }
+  return undefined
+}
+
+export function isInFrontMatter(document: TextDocument, position: Position): boolean {
+  const range = getFrontMatterRange(document)
+  if (!range) {
+    return false
+  }
+  return position.line > range.start && position.line < range.end
+}
 
 export function parseFrontMatter<T = any>(text: string): T | undefined {
   try {

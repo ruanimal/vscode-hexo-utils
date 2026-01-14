@@ -227,6 +227,43 @@ export class SelectTags extends ClassifyCommand {
 }
 
 @command()
+export class SelectCategories extends ClassifyCommand {
+  constructor() {
+    super(Commands.selectCategories)
+  }
+
+  async execute(): Promise<void> {
+    const editor = window.activeTextEditor
+    if (!editor) {
+      return
+    }
+
+    const currentCategories = this.getCurrentValues(editor, HexoMetadataKeys.categories)
+    const allCategories = await HexoMetadataUtils.getCategories()
+
+    const items = allCategories
+      .map((category) => ({
+        label: category,
+        picked: currentCategories.includes(category),
+      }))
+      .sort((a, b) => Number(b.picked) - Number(a.picked))
+
+    const selected = await window.showQuickPick(items, {
+      canPickMany: true,
+      placeHolder: 'Select categories',
+    })
+
+    if (selected) {
+      this.updateEditor(
+        editor,
+        HexoMetadataKeys.categories,
+        selected.map((item) => item.label),
+      )
+    }
+  }
+}
+
+@command()
 export class ClassifyAdd extends ClassifyCommand {
   constructor() {
     super(Commands.classifyAddTag, Commands.classifyAddCategory)

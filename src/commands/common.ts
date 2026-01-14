@@ -25,6 +25,7 @@ export enum Commands {
   moveToPost = 'hexo.moveTo[post]',
   uploadImages = 'hexo.uploadImages',
   selectTags = 'hexo.selectTags',
+  selectCategories = 'hexo.selectCategories',
   updateDate = 'hexo.updateDate',
   classifyAddTag = 'hexo.classify.add[tags]',
   classifyAddCategory = 'hexo.classify.add[categories]',
