@@ -1,8 +1,8 @@
 import { Range, type TextEditor, window, workspace, Uri, commands, WorkspaceEdit } from 'vscode'
-import yamljs from 'yamljs'
 import { HexoMetadataKeys, HexoMetadataUtils } from '../hexoMetadata'
 import { Command, Commands, command, type ICommandParsed } from './common'
 import { ClassifyItem } from '../treeViews/classifyTreeView/hexoClassifyProvider'
+import { parseFrontMatter } from '../utils'
 
 export abstract class ClassifyCommand extends Command {
   protected getType(cmd: ICommandParsed, item?: ClassifyItem): HexoMetadataKeys {
@@ -17,27 +17,24 @@ export abstract class ClassifyCommand extends Command {
 
   protected getCurrentValues(editor: TextEditor, key: string): string[] {
     const text = editor.document.getText()
-    const yamlReg = /^---((.|\n|\r)+?)---$/m
-    const match = yamlReg.exec(text)
-    if (!match) {
-      return []
+    const data = parseFrontMatter(text) || {}
+
+    const val =
+      data[key] ||
+      (key === HexoMetadataKeys.categories
+        ? data.category
+        : key === HexoMetadataKeys.tags
+          ? data.tag
+          : undefined)
+
+    if (Array.isArray(val)) {
+      if (key === HexoMetadataKeys.categories) {
+        return val.map((v) => (Array.isArray(v) ? v.join(' / ') : String(v)))
+      }
+      return val.map((v) => String(v))
     }
-
-    try {
-      const data = yamljs.parse(match[1]) || {}
-      const val = data[key] || (key === HexoMetadataKeys.categories ? data.category : key === HexoMetadataKeys.tags ? data.tag : undefined)
-
-      if (Array.isArray(val)) {
-        if (key === HexoMetadataKeys.categories) {
-          return val.map((v) => (Array.isArray(v) ? v.join(' / ') : String(v)))
-        }
-        return val.map((v) => String(v))
-      }
-      if (typeof val === 'string') {
-        return [val]
-      }
-    } catch (e) {
-      // ignore
+    if (typeof val === 'string') {
+      return [val]
     }
 
     return []

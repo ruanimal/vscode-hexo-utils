@@ -17,6 +17,19 @@ export async function askForNext(placeHolder: string): Promise<boolean> {
 
 const metaCache: Record<string, IHexoMetadata> = {}
 
+export function parseFrontMatter<T = any>(text: string): T | undefined {
+  try {
+    // /---(data)---/ => $1 === data
+    const yamlReg = /^---((.|\n|\r)+?)---$/m
+
+    const yamlData = yamlReg.exec(text) || []
+
+    return yamljs.parse(yamlData[1])
+  } catch (error) {
+    return undefined
+  }
+}
+
 export async function getMDFileMetadata(uri: Uri): Promise<IHexoMetadata> {
   const stat = await workspace.fs.stat(uri)
 
@@ -29,12 +42,8 @@ export async function getMDFileMetadata(uri: Uri): Promise<IHexoMetadata> {
 
   try {
     const content = await workspace.fs.readFile(uri)
-    // /---(data)---/ => $1 === data
-    const yamlReg = /^---((.|\n|\r)+?)---$/m
-
-    const yamlData = yamlReg.exec(content.toString()) || []
-
-    const data = yamljs.parse(yamlData[1]) || {}
+    const text = content.toString()
+    const data = parseFrontMatter(text) || {}
 
     const rawCategories = data[HexoMetadataKeys.categories] || data.category || []
     const categories: (string | string[])[] = Array.isArray(rawCategories)
@@ -60,6 +69,7 @@ export async function getMDFileMetadata(uri: Uri): Promise<IHexoMetadata> {
       title: data[HexoMetadataKeys.title] || '',
       date: data[HexoMetadataKeys.date] || '',
       mtime: stat.mtime,
+      keys: Object.keys(data),
     }
 
     metaCache[cacheId] = metadata
@@ -73,6 +83,7 @@ export async function getMDFileMetadata(uri: Uri): Promise<IHexoMetadata> {
       title: path.parse(uri.fsPath).name,
       date: new Date(stat.ctime),
       mtime: 0,
+      keys: [],
     }
 
     metaCache[cacheId] = metadata

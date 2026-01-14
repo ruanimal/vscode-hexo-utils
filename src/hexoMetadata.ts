@@ -22,6 +22,10 @@ export interface IHexoMetadata {
    * For cache, latest modification time.
    */
   mtime: number
+  /**
+   * All keys in Front Matter
+   */
+  keys: string[]
 }
 
 type THexoMeta = IHexoMetadata & { name?: string }
@@ -36,9 +40,11 @@ export class HexoMetadataUtils {
 
   tags: IClassify[] = []
   categories: IClassify[] = []
+  allKeys: string[] = []
   private _metadataMap: Map<string, THexoMeta> = new Map()
 
   constructor(metadatas: THexoMeta[]) {
+    const keysSet = new Set<string>()
     for (const metadata of metadatas) {
       metadata.name = path.parse(metadata.filePath.fsPath).name
       this._metadataMap.set(metadata.filePath.toString(), metadata)
@@ -54,7 +60,15 @@ export class HexoMetadataUtils {
           this.addClassify(ClassifyTypes.category, t, metadata)
         }
       }
+
+      if (metadata.keys) {
+        for (const key of metadata.keys) {
+          keysSet.add(key)
+        }
+      }
     }
+
+    this.allKeys = Array.from(keysSet)
 
     this.sort()
   }
@@ -91,6 +105,11 @@ export class HexoMetadataUtils {
   static async getCategories(): Promise<string[]> {
     const utils = await HexoMetadataUtils.get()
     return utils.categories.map((c) => c.name)
+  }
+
+  static async getAllKeys(): Promise<string[]> {
+    const utils = await HexoMetadataUtils.get()
+    return utils.allKeys
   }
 
   getMetadataByUri(uri: Uri): THexoMeta | undefined {
