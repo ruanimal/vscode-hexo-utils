@@ -1,10 +1,35 @@
 import { commands, type ExtensionContext, ViewColumn, window, workspace } from 'vscode'
 import { ConfigProperties, configs, getConfig } from './configs'
+import { isHexoSidebarActive, onSidebarVisibilityChange } from './treeViews'
 
 export function registerAutoPreview(context: ExtensionContext) {
   let lastActiveFile: string | undefined
 
+  async function closeAllMarkdownPreviews() {
+    const tabGroups = window.tabGroups
+    if (!tabGroups) return
+
+    for (const group of tabGroups.all) {
+      for (const tab of group.tabs) {
+        const input = tab.input as any
+        if (
+          input &&
+          typeof input.viewType === 'string' &&
+          input.viewType.includes('markdown.preview')
+        ) {
+          await tabGroups.close(tab)
+        }
+      }
+    }
+  }
+
   context.subscriptions.push(
+    onSidebarVisibilityChange(async (active) => {
+      if (!active) {
+        lastActiveFile = undefined
+        await closeAllMarkdownPreviews()
+      }
+    }),
     window.onDidChangeActiveTextEditor(async (editor) => {
       if (!editor) return
 
@@ -13,6 +38,8 @@ export function registerAutoPreview(context: ExtensionContext) {
 
       const autoPreview = getConfig(ConfigProperties.autoPreview)
       if (!autoPreview) return
+
+      if (!isHexoSidebarActive()) return
 
       const filePath = doc.uri.fsPath
       if (lastActiveFile === filePath) return
@@ -24,21 +51,7 @@ export function registerAutoPreview(context: ExtensionContext) {
         lastActiveFile = filePath
 
         // 1. Close all existing markdown previews to keep only one preview column
-        const tabGroups = window.tabGroups
-        if (tabGroups) {
-          for (const group of tabGroups.all) {
-            for (const tab of group.tabs) {
-              const input = tab.input as any
-              if (
-                input &&
-                typeof input.viewType === 'string' &&
-                input.viewType.includes('markdown.preview')
-              ) {
-                await tabGroups.close(tab)
-              }
-            }
-          }
-        }
+        await closeAllMarkdownPreviews()
 
         // 2. Ensure the article is in the first column
         if (editor.viewColumn !== ViewColumn.One) {
