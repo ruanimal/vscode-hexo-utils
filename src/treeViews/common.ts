@@ -1,5 +1,6 @@
 import {
   Disposable,
+  EventEmitter,
   type ExtensionContext,
   type TreeDataProvider,
   type TreeView,
@@ -48,6 +49,17 @@ export abstract class BaseTreeView<T> extends BaseDispose {
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 const treeViews: any[] = []
 
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+const instances: BaseTreeView<any>[] = []
+
+const onSidebarVisibilityChangeEmitter = new EventEmitter<boolean>()
+
+export const onSidebarVisibilityChange = onSidebarVisibilityChangeEmitter.event
+
+export function isHexoSidebarActive() {
+  return instances.some((v) => v.treeView.visible)
+}
+
 export function treeView(): ClassDecorator {
   return (target) => {
     treeViews.push(target)
@@ -56,6 +68,12 @@ export function treeView(): ClassDecorator {
 
 export function registerTreeViews(context: ExtensionContext) {
   for (const TreeViewClass of treeViews) {
-    context.subscriptions.push(new TreeViewClass(context))
+    const instance = new TreeViewClass(context)
+    instances.push(instance)
+    context.subscriptions.push(instance)
+
+    instance.treeView.onDidChangeVisibility(() => {
+      onSidebarVisibilityChangeEmitter.fire(isHexoSidebarActive())
+    })
   }
 }
