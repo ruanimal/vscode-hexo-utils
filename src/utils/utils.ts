@@ -16,8 +16,19 @@ export async function askForNext(placeHolder: string): Promise<boolean> {
 }
 
 const metaCache: Record<string, IHexoMetadata> = {}
+const rangeCache: Record<string, { version: number; range: { start: number; end: number } | undefined }> =
+  {}
 
-export function getFrontMatterRange(document: TextDocument): { start: number; end: number } | undefined {
+export function getFrontMatterRange(
+  document: TextDocument,
+): { start: number; end: number } | undefined {
+  const cacheKey = document.uri.toString()
+  const cached = rangeCache[cacheKey]
+
+  if (cached && cached.version === document.version) {
+    return cached.range
+  }
+
   const text = document.getText()
   const lines = text.split(/\r?\n/)
   let start = -1
@@ -33,10 +44,14 @@ export function getFrontMatterRange(document: TextDocument): { start: number; en
     }
   }
 
-  if (start !== -1 && end !== -1) {
-    return { start, end }
+  const range = start !== -1 && end !== -1 ? { start, end } : undefined
+
+  rangeCache[cacheKey] = {
+    version: document.version,
+    range,
   }
-  return undefined
+
+  return range
 }
 
 export function isInFrontMatter(document: TextDocument, position: Position): boolean {
