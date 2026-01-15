@@ -18,6 +18,7 @@ export enum ConfigProperties {
   generateTimeFormat = 'generateTimeFormat',
   assetFolderType = 'assetFolderType',
   enableTocNumbering = 'toc.enableNumbering',
+  deployCommand = 'deploy.command',
 }
 
 export interface ImgChrOption {
@@ -71,6 +72,7 @@ type ConfigTypeMap = {
   [ConfigProperties.upload]: boolean
   [ConfigProperties.uploadType]: UploadType
   [ConfigProperties.enableTocNumbering]: boolean
+  [ConfigProperties.deployCommand]: string
 }
 
 export function getConfig<T extends ConfigProperties>(propName: T, section = ConfigSection) {

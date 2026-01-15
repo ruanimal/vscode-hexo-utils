@@ -1,4 +1,5 @@
 import {
+  commands,
   Disposable,
   EventEmitter,
   type ExtensionContext,
@@ -73,7 +74,12 @@ export function registerTreeViews(context: ExtensionContext) {
     context.subscriptions.push(instance)
 
     instance.treeView.onDidChangeVisibility(() => {
-      onSidebarVisibilityChangeEmitter.fire(isHexoSidebarActive())
+      const active = isHexoSidebarActive()
+      commands.executeCommand('setContext', 'isHexoSidebarActive', active)
+      onSidebarVisibilityChangeEmitter.fire(active)
     })
   }
+
+  // Set initial context value
+  commands.executeCommand('setContext', 'isHexoSidebarActive', isHexoSidebarActive())
 }

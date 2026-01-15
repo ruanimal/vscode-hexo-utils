@@ -168,6 +168,11 @@
           "type": "boolean",
           "default": false,
           "description": "Enable auto-numbering for TOC."
+        },
+        "hexo.deploy.command": {
+          "type": "string",
+          "default": "npx hexo deploy",
+          "description": "Custom deploy command. The environment variable HEXO_ROOT will be set to the hexo project root path."
         }
       }
     },
@@ -334,6 +339,12 @@
           "light": "resources/light/icon-trash.svg",
           "dark": "resources/dark/icon-trash.svg"
         }
+      },
+      {
+        "command": "hexo.deploy",
+        "title": "Deploy",
+        "category": "Hexo Utils",
+        "icon": "$(cloud-upload)"
       }
     ],
     "keybindings": [
@@ -464,6 +475,13 @@
           "command": "hexo.new[draft]",
           "group": "navigation",
           "when": "view == hexo.draft"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "hexo.deploy",
+          "group": "navigation",
+          "when": "isHexoSidebarActive"
         }
       ],
       "editor/context": [
